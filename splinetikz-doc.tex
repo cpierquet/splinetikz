@@ -97,6 +97,12 @@
 
 \part*{Courbe d'interpolation}
 
+\begin{center}
+	\textsf{cpierquet -- at -- outlook . fr}
+	
+	\textsf{v 1.0 - Février 2022}
+\end{center}
+
 \section{Introduction}
 
 \subsection{Outils disponibles}
@@ -117,12 +123,9 @@ Il existe également l'option \vverb|in=...,out=...| pour gérer les angles de s
 \subsection{Comparaison des outils}
 
 {\scriptsize \begin{codehigh}[language=latex/latex2,style/main=red!25,style/code=red!25]
-...
-\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
-\draw[courbe,domain=-5:-3] plot(\x,{-3/4*\x*\x*\x+-9*\x*\x+-135/4*\x+-79/2}) ;
-\draw[courbe,domain=-3:-1] plot(\x,{1/2*\x*\x*\x+3*\x*\x+9/2*\x+1}) ;
-\draw[courbe,domain=-1:2] plot(\x,{-0.185185*\x*\x*\x+0.27777*\x*\x+1.111111*\x+-0.351851}) ;
-...
+\draw[red,domain=-5:-3] plot(\x,{-3/4*\x*\x*\x+-9*\x*\x+-135/4*\x+-79/2}) ;
+\draw[red,domain=-3:-1] plot(\x,{1/2*\x*\x*\x+3*\x*\x+9/2*\x+1}) ;
+\draw[red,domain=-1:2] plot(\x,{-0.185185*\x*\x*\x+0.27777*\x*\x+1.111111*\x+-0.351851}) ;
 \end{codehigh}}
 
 \begin{center}
@@ -148,12 +151,9 @@ Il existe également l'option \vverb|in=...,out=...| pour gérer les angles de s
 \medskip
 
 {\scriptsize \begin{codehigh}[language=latex/latex2,style/main=orange!25,style/code=orange!25]
-...
-\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
 \draw[orange,line width=1.25pt] (-5,-2) ..controls +(0:0.67) and +(180:0.67).. (-3,1) ;
 \draw[orange,line width=1.25pt] (-3,1) ..controls +(0:0.67) and +(180:0.67).. (-1,-1) ;
 \draw[orange,line width=1.25pt] (-1,-1) ..controls +(0:1) and +(180:1).. (2,1.5) ;
-...
 \end{codehigh}}
 
 \begin{center}
@@ -179,12 +179,9 @@ Il existe également l'option \vverb|in=...,out=...| pour gérer les angles de s
 \medskip
 
 {\scriptsize \begin{codehigh}[language=latex,style/main=ForestGreen!25,style/code=ForestGreen!25]
-...
-\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
 \draw[ForestGreen,line width=1.25pt] (-5,-2) to[out=0,in=180] (-3,1) ;
 \draw[ForestGreen,line width=1.25pt] (-3,1) to[out=0,in=180] (-1,-1) ;
 \draw[ForestGreen,line width=1.25pt] (-1,-1) to[out=0,in=180] (2,1.5) ;
-...
 \end{codehigh}}
 
 \begin{center}
@@ -533,10 +530,10 @@ Cela permet de tracer la tangente :
 	%la liste pour la courbe d'interpolation
 	\def\liste{0/6/3§3/11/0§7/3/0§10/0/0§14/14/6}
 	%les tangentes "stylisées"
-	\splinetgte[liste=\liste,xl=0,xr=1,couleur=blue,style=dashed]
-	\splinetgte[liste=\liste,xl=2,xr=2,couleur=purple,style=dotted,point=2]
-	\splinetgte[liste=\liste,xl=2,xr=2,couleur=orange,style=<->,point=3]
-	\splinetgte[liste=\liste,xl=2,xr=0,couleur=ForestGreen,point=5]
+	\tangentetikz[liste=\liste,xl=0,xr=1,couleur=blue,style=dashed]
+	\tangentetikz[liste=\liste,xl=2,xr=2,couleur=purple,style=dotted,point=2]
+	\tangentetikz[liste=\liste,xl=2,xr=2,couleur=orange,style=<->,point=3]
+	\tangentetikz[liste=\liste,xl=2,xr=0,couleur=ForestGreen,point=5]
 	%la courbe en elle-même
 	\splinetikz[liste=\liste,affpoints=true,coeffs=3,couleur=cyan,style=densely dotted]
 \end{tikzpicture}
