@@ -1,0 +1,690 @@
+% !TeX TXS-program:compile = txs:///pdflatex/[--shell-escape]
+
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[upright]{fourier}
+\usepackage[scaled=0.875]{helvet}
+\renewcommand\ttdefault{lmtt}
+\usepackage[scaled=0.875]{cabin}
+\usepackage{splinetikz}
+\usepackage[french]{babel}
+\usepackage{siunitx}
+\usepackage{graphics}
+\usepackage{hvlogos}
+\usepackage{simplekv}
+\usepackage{listofitems}
+\usepackage{xintexpr}
+\usepackage{codehigh}
+\usepackage{minted}
+\sisetup{locale=FR}
+\usepackage{geometry}
+\geometry{margin=1.5cm}
+\usepackage{newverbs}
+\newverbcommand{\pverb}{\color{purple}}{}
+\newverbcommand{\rverb}{\color{red}}{}
+\newverbcommand{\vverb}{\color{ForestGreen}}{}
+\newverbcommand{\averb}{\color{Aquamarine}}{}
+\newverbcommand{\overb}{\color{orange}}{}
+\setlength{\parindent}{0pt}
+\definecolor{LightGray}{gray}{0.9}
+
+\begin{document}
+
+%gestion de la fenêtre v2 directement dans le tikzpicture
+\tikzset{%
+	xmin/.store in=\xmin,xmin/.default=-5,xmin=-5,
+	xmax/.store in=\xmax,xmax/.default=5,xmax=5,
+	ymin/.store in=\ymin,ymin/.default=-5,ymin=-5,
+	ymax/.store in=\ymax,ymax/.default=5,ymax=5,
+	xgrille/.store in=\xgrille,xgrille/.default=1,xgrille=1,
+	xgrilles/.store in=\xgrilles,xgrilles/.default=0.5,xgrilles=0.5,
+	ygrille/.store in=\ygrille,ygrille/.default=1,ygrille=1,
+	ygrilles/.store in=\ygrilles,ygrilles/.default=0.5,ygrilles=0.5,
+	xunit/.store in=\xunit,unit/.default=1,xunit=1,
+	yunit/.store in=\yunit,unit/.default=1,yunit=1
+}
+\newcommand\tgrilles[1][ultra thin,lightgray]{%
+	\draw[xstep=\xgrilles,ystep=\ygrilles,#1] (\xmin,\ymin) grid (\xmax,\ymax);%
+}
+\newcommand\tgrillep[1][thin,gray]{%
+	\draw[xstep=\xgrille,ystep=\ygrille,#1] (\xmin,\ymin) grid (\xmax,\ymax);%
+}
+
+\newcommand\genfenetre{%
+	%styles
+	\tikzset{noeudexpl/.style={purple,font=\sffamily\small}}
+	\tikzset{portionexpl/.style={orange,thick,<->}}
+	\tikzset{expl/.style={midway,inner sep=1pt,above right=0,orange,font=\sffamily\scriptsize,rotate=45}}
+	\tikzset{coeffs/.style={Aquamarine!50!black,circle,draw=Aquamarine,thick,fill=Aquamarine!5,font=\small\ttfamily}}
+	\tikzset{tangente/.style={teal,line width=1pt,dashed}}
+	%grilles & axes
+	\tgrilles[line width=0.3pt,lightgray!50]
+	\tgrillep[line width=0.6pt,lightgray!50]
+	\draw[line width=1.5pt,->,gray] (\xmin,0)--(\xmax,0) ;
+	\draw[line width=1.5pt,->,gray] (0,\ymin)--(0,\ymax) ;
+	\foreach \x in {0,1,...,10} {\draw[gray,line width=1.5pt] (\x,4pt) -- (\x,-4pt) ;}
+	\foreach \y in {0,1,...,6} {\draw[gray,line width=1.5pt] (4pt,\y) -- (-4pt,\y) ;}
+}
+
+\newcommand\gennotice{%
+	%notice
+	\draw (0,1) node[noeudexpl,below] {point 1} ;
+	\draw (4,3.667) node[noeudexpl,above] {point 2} ;
+	\draw (7.5,1.75) node[noeudexpl,below] {point 3} ;
+	\draw (9,2) node[noeudexpl,above] {point 4} ;
+	\draw (10,0) node[noeudexpl,below] {point 5} ;
+	\draw[portionexpl] (0,6)--(4,6) node[expl] {portion 1} ;
+	\draw[portionexpl] (4,6)--(7.5,6) node[expl] {portion 2} ;
+	\draw[portionexpl] (7.5,6)--(9,6) node[expl] {portion 3} ;
+	\draw[portionexpl] (9,6)--(10,6) node[expl] {portion 4} ;
+	\draw[orange,densely dashed,thick] (4,0)--(4,6) (7.5,0)--(7.5,6) (9,0)--(9,6) (10,0)--(10,6) ;
+	%tangentes
+	\draw[tangente] (0,1)--(1,1) ;
+	\draw[tangente,domain=3:5] plot (\x,{-1/3*(\x-9)+2}) ;
+	\draw[tangente] (6.5,1.75)--(8.5,1.75) ;
+	\draw[tangente,domain=8:10] plot (\x,{-1/3*(\x-9)+2}) ;
+	\draw[tangente,domain=9.5:10] plot (\x,{-10*(\x-10)+0}) ;%
+}
+
+\newcommand\listecoeffs[4]{%
+	\draw (0,5.5) node[left,Aquamarine,font=\small\ttfamily] {Coeffs} ;
+	\node[coeffs] at (2,5.5) {#1} ;
+	\node[coeffs] at ({(4+7.5)/2},5.5) {#2} ;
+	\node[coeffs] at ({(7.5+9)/2},5.5) {#3} ;
+	\node[coeffs] at ({(9+10)/2},5.5) {#4} ;%
+}
+
+\part*{Courbe d'interpolation}
+
+\section{Introduction}
+
+\subsection{Outils disponibles}
+
+Les \rverb|splines cubiques| sont utiles pour \og tracer \fg{} des portions de courbes, régulières entre deux points donnés, avec gestion des tangentes de sortie et d'entrée.
+
+On peut les déterminer, par résolution de systèmes, donc grâce à un outil externe.
+
+\smallskip
+
+\TikZ{} permet, grâce à l'outil \overb|..controls| (lié aux courbes de Bézier) d'obtenir un résultat très proche de l'interpolation cubique, et ce avec un \textit{paramètre} qui vaut \overb|3|.
+
+\smallskip
+
+Il existe également l'option \vverb|in=...,out=...| pour gérer les angles de sortie et d'entrée de l'option chemin \vverb|to|.
+
+
+\subsection{Comparaison des outils}
+
+{\scriptsize \begin{codehigh}[language=latex/latex2,style/main=red!25,style/code=red!25]
+...
+\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
+\draw[courbe,domain=-5:-3] plot(\x,{-3/4*\x*\x*\x+-9*\x*\x+-135/4*\x+-79/2}) ;
+\draw[courbe,domain=-3:-1] plot(\x,{1/2*\x*\x*\x+3*\x*\x+9/2*\x+1}) ;
+\draw[courbe,domain=-1:2] plot(\x,{-0.185185*\x*\x*\x+0.27777*\x*\x+1.111111*\x+-0.351851}) ;
+...
+\end{codehigh}}
+
+\begin{center}
+	\begin{tikzpicture}[x=0.6cm,y=0.6cm,xmin=-6,xmax=3,xgrille=1,xgrilles=0.5,ymin=-3,ymax=3,ygrille=1,ygrilles=0.5]
+		\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
+		%grilles & axes
+		\tgrilles[line width=0.3pt,lightgray!50]
+		\tgrillep[line width=0.6pt,lightgray!50]
+		\draw[line width=1.5pt,->,gray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,gray] (0,\ymin)--(0,\ymax) ;
+		\foreach \x in {-5,-4,...,2} {\draw[gray,line width=1.5pt] (\x,4pt) -- (\x,-4pt) ;}
+		\foreach \y in {-2,-1,...,2} {\draw[gray,line width=1.5pt] (4pt,\y) -- (-4pt,\y) ;}
+		\foreach \Point in {(-5,-2),(-5,-2),(-3,1),(-1,-1),(2,1.5)}
+			\filldraw[red] \Point circle[radius=2pt] ;
+		%\clip (\xmin,\ymin) rectangle (\xmax,\ymax) ; %on restreint les fonctions à la fenêtre
+		%les splines en pgf
+		\draw[courbe,domain=-5:-3] plot(\x,{-3/4*\x*\x*\x+-9*\x*\x+-135/4*\x+-79/2}) ;
+		\draw[courbe,domain=-3:-1] plot(\x,{1/2*\x*\x*\x+3*\x*\x+9/2*\x+1}) ;
+		\draw[courbe,domain=-1:2] plot(\x,{-0.185185185185185*\x*\x*\x+0.277777777777778*\x*\x+1.11111111111111*\x+-0.351851851851852}) ;
+	\end{tikzpicture}
+\end{center}
+
+\medskip
+
+{\scriptsize \begin{codehigh}[language=latex/latex2,style/main=orange!25,style/code=orange!25]
+...
+\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
+\draw[orange,line width=1.25pt] (-5,-2) ..controls +(0:0.67) and +(180:0.67).. (-3,1) ;
+\draw[orange,line width=1.25pt] (-3,1) ..controls +(0:0.67) and +(180:0.67).. (-1,-1) ;
+\draw[orange,line width=1.25pt] (-1,-1) ..controls +(0:1) and +(180:1).. (2,1.5) ;
+...
+\end{codehigh}}
+
+\begin{center}
+	\begin{tikzpicture}[x=0.6cm,y=0.6cm,xmin=-6,xmax=3,xgrille=1,xgrilles=0.5,ymin=-3,ymax=3,ygrille=1,ygrilles=0.5]
+		\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
+		%grilles & axes
+		\tgrilles[line width=0.3pt,lightgray!50]
+		\tgrillep[line width=0.6pt,lightgray!50]
+		\draw[line width=1.5pt,->,gray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,gray] (0,\ymin)--(0,\ymax) ;
+		\foreach \x in {-5,-4,...,2} {\draw[gray,line width=1.5pt] (\x,4pt) -- (\x,-4pt) ;}
+		\foreach \y in {-2,-1,...,2} {\draw[gray,line width=1.5pt] (4pt,\y) -- (-4pt,\y) ;}
+		\foreach \Point in {(-5,-2),(-5,-2),(-3,1),(-1,-1),(2,1.5)}
+			\filldraw[orange] \Point circle[radius=2pt] ;
+		%\clip (\xmin,\ymin) rectangle (\xmax,\ymax) ; %on restreint les fonctions à la fenêtre
+		%controls
+		\draw[orange,line width=1.25pt] (-5,-2) ..controls +(0:0.67) and +(180:0.67).. (-3,1) ;
+		\draw[orange,line width=1.25pt] (-3,1) ..controls +(0:0.67) and +(180:0.67).. (-1,-1) ;
+		\draw[orange,line width=1.25pt] (-1,-1) ..controls +(0:1) and +(180:1).. (2,1.5) ;
+	\end{tikzpicture}
+\end{center}
+
+\medskip
+
+{\scriptsize \begin{codehigh}[language=latex,style/main=ForestGreen!25,style/code=ForestGreen!25]
+...
+\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
+\draw[ForestGreen,line width=1.25pt] (-5,-2) to[out=0,in=180] (-3,1) ;
+\draw[ForestGreen,line width=1.25pt] (-3,1) to[out=0,in=180] (-1,-1) ;
+\draw[ForestGreen,line width=1.25pt] (-1,-1) to[out=0,in=180] (2,1.5) ;
+...
+\end{codehigh}}
+
+\begin{center}
+	\begin{tikzpicture}[x=0.6cm,y=0.6cm,xmin=-6,xmax=3,xgrille=1,xgrilles=0.5,ymin=-3,ymax=3,ygrille=1,ygrilles=0.5]
+		\tikzset{courbe/.style={line width=1.25pt,red,samples=250}}
+		%grilles & axes
+		\tgrilles[line width=0.3pt,lightgray!50]
+		\tgrillep[line width=0.6pt,lightgray!50]
+		\draw[line width=1.5pt,->,gray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,gray] (0,\ymin)--(0,\ymax) ;
+		\foreach \x in {-5,-4,...,2} {\draw[gray,line width=1.5pt] (\x,4pt) -- (\x,-4pt) ;}
+		\foreach \y in {-2,-1,...,2} {\draw[gray,line width=1.5pt] (4pt,\y) -- (-4pt,\y) ;}
+		\foreach \Point in {(-5,-2),(-5,-2),(-3,1),(-1,-1),(2,1.5)}
+			\filldraw[ForestGreen] \Point circle[radius=2pt] ;
+		%\clip (\xmin,\ymin) rectangle (\xmax,\ymax) ; %on restreint les fonctions à la fenêtre
+		%controls
+		\draw[ForestGreen,line width=1.25pt] (-5,-2) to[out=0,in=180] (-3,1) ;
+		\draw[ForestGreen,line width=1.25pt] (-3,1) to[out=0,in=180] (-1,-1) ;
+		\draw[ForestGreen,line width=1.25pt] (-1,-1) to[out=0,in=180] (2,1.5) ;
+	\end{tikzpicture}
+\end{center}
+
+\newpage
+
+\section{L'outil \og splinetikz \fg}
+
+\subsection{Explications et définitions}
+
+On va utiliser les notions suivantes pour paramétrer le tracé \og automatique \fg{} par \verb|..controls| :
+%
+\begin{itemize}
+	\item il faut rentrer les \textcolor{purple}{\textsf{points de contrôle}} ;
+	\item il faut préciser les \textcolor{ForestGreen}{\textsf{pentes des tangentes}} (pour le moment on travaille avec les mêmes à gauche et à droite\ldots) ;
+	\item on peut paramétrer les \textcolor{Aquamarine}{\textsf{coefficients}} pour \og affiner \fg{} les portions.
+\end{itemize}
+
+\medskip
+
+Pour déclarer les paramètres :
+%
+\begin{itemize}
+	\item liste des points de contrôle par : \verb|liste=x1/y1/d1§x2/y2/d2§...|
+	\begin{itemize}
+		\item il faut au-moins deux points ;
+		\item avec les points \pverb|(xi;yi)| et \vverb|f'(xi)=di|.
+	\end{itemize}
+	\item coefficients de contrôle par \verb|coeffs=...| :
+	\begin{itemize}
+		\item \averb|coeffs=x| pour mettre tous les coefficients à x ;
+		\item \averb|coeffs=C1§C2§...| pour spécifier les coefficients par portion (donc il faut avoir autant de § que pour les points !) ;
+		\item \averb|coeffs=C1G/C1D§...| pour spécifier les coefficients par portion et par partie gauche/droite ;
+		\item on peut mixer avec \averb|coeffs=C1§C2G/C2D§...|.
+	\end{itemize}
+\end{itemize}
+
+\subsection{Clés et options}
+
+La commande \verb|\splinetikz| se présente sous la forme :
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+\begin{tikzpicture}
+	...
+	\splinetikz[liste=...,coeffs=...,affpoints=...,couleur=...,epaisseur=...,taillepoints=...,couleurpoints=...,style=...]
+	...
+\end{tikzpicture}
+\end{minted}
+
+Certains paramètres peuvent être gérés directement dans la commande \verb|\splinetikz| :
+
+\begin{itemize}
+	\item la couleur de la courbe est \textcolor{red}{rouge}, gérée par la \textsf{clé} \texttt{<couleur=...>} ;
+	\item l'épaisseur de la courbe est de \textcolor{red}{1.25pt}, gérée par la \textsf{clé} \texttt{<epaisseur=...>} ;
+	\item du style supplémentaire pour la courbe peut être rajouté, grâce à la \textsf{clé} \texttt{<style=...>} ;
+	\item les coefficients de \textit{compensation} sont par faut à 3, gérés par la \textsf{clé} \texttt{<coeffs=...>}
+	\item les points de contrôle ne sont pas affichés par défaut, mais \textsf{clé booléenne} \texttt{<affpoints=true>} permet de les afficher ;
+	\item la taille des points de contrôle est géré par la \textsf{clé} \texttt{<taillepoints=...>}.
+\end{itemize}
+
+\medskip
+
+\begin{center}
+	\begin{tikzpicture}[x=0.9cm,y=0.9cm,xmin=-1,xmax=11,xgrille=1,xgrilles=0.5,ymin=-1,ymax=7,ygrille=1,ygrilles=0.5]
+		\genfenetre
+		\splinetikz[liste=0/1/0§4/3.667/-0.333§7.5/1.75/0§9/2/-0.333§10/0/-10,affpoints=true,coeffs=3,couleur=red]
+		\gennotice
+		\listecoeffs{3}{3}{3}{3}
+	\end{tikzpicture}
+\end{center}
+
+\hspace{3cm}\verb|\splinetikz[%|
+
+\hspace{4cm}\verb|liste=|%
+\pverb|0/1|\vverb|/0|\verb|§|\pverb|4/3.667|\vverb|/-0.333|\verb|§|\pverb|7.5/1.75|\vverb|/0|\verb|§|\pverb|9/2|\vverb|/-0.333|\verb|§|\pverb|10/0|\vverb|/-10|\verb|,%|
+
+\hspace{4cm}\verb|coeffs=|\averb|3|\verb|,%|
+
+\hspace{4cm}\verb|affpoints=true|\verb|,%|
+
+\hspace{4cm}\verb|couleur=red|\verb|]|
+
+\newpage
+
+\section{Influence(s) des coefficients de \textit{compensation}}
+
+\subsection{Avec une légère modification pour la dernière portion}
+
+\begin{center}
+	\begin{tikzpicture}[x=1cm,y=1cm,xmin=-1,xmax=11,xgrille=1,xgrilles=0.5,ymin=-1,ymax=7,ygrille=1,ygrilles=0.5]
+		\genfenetre
+		\splinetikz[liste=0/1/0§4/3.667/-0.333§7.5/1.75/0§9/2/-0.333§10/0/-10,affpoints=true,coeffs=3§3§3§2]
+		\gennotice
+		\listecoeffs{3}{3}{3}{2}
+	\end{tikzpicture}
+\end{center}
+
+\hspace{3cm}\verb|\splinetikz[%|
+
+\hspace{4cm}\verb|liste=|%
+	\pverb|0/1|\vverb|/0|\verb|§|\pverb|4/3.667|\vverb|/-0.333|\verb|§|\pverb|7.5/1.75|\vverb|/0|\verb|§|\pverb|9/2|\vverb|/-0.333|\verb|§|\pverb|10/0|\vverb|/-10|\verb|,%|
+	
+\hspace{4cm}\verb|coeffs=|\averb|3|\verb|§|\averb|3|\verb|§|\averb|3|\verb|§|\averb|2|\verb|,%|
+
+\hspace{4cm}\verb|affpoints=true|\verb|]|
+
+\subsection{Avec une gestion plus fine de la dernière partie}
+
+\begin{center}
+	\begin{tikzpicture}[x=1cm,y=1cm,xmin=-1,xmax=11,xgrille=1,xgrilles=0.5,ymin=-1,ymax=7,ygrille=1,ygrilles=0.5]
+		\genfenetre
+		\splinetikz[liste=0/1/0§4/3.667/-0.333§7.5/1.75/0§9/2/-0.333§10/0/-10,affpoints=true,coeffs=3§3§3§2/1]
+		\gennotice
+		\listecoeffs{3/3}{3/3}{3/3}{2/1}
+	\end{tikzpicture}
+\end{center}
+
+\hspace{3cm}\verb|\splinetikz[%|
+
+\hspace{4cm}\verb|liste=|%
+	\pverb|0/1|\vverb|/0|\verb|§|\pverb|4/3.667|\vverb|/-0.333|\verb|§|\pverb|7.5/1.75|\vverb|/0|\verb|§|\pverb|9/2|\vverb|/-0.333|\verb|§|\pverb|10/0|\vverb|/-10|\verb|,%|
+
+\hspace{4cm}\verb|coeffs=|\averb|3/3|\verb|§|\averb|3/3|\verb|§|\averb|3/3|\verb|§|\averb|2/1|\verb|,%| ou \verb|coeffs=|\averb|3|\verb|§|\averb|3|\verb|§|\averb|3|\verb|§|\averb|2/1|\verb|,%|
+
+\hspace{4cm}\verb|affpoints=true|\verb|]|
+
+\newpage
+
+\subsection{Compléments visuels sur les coefficients de\textit{compensation}}
+
+Dans la majorité des cas, le coefficient \textcircled{3} permet d'obtenir une courbe (ou une portion) très satisfaisante !
+
+Dans certains cas, notamment si l'une des pentes est relativement \og forte \fg{} et/ou si l'intervalle horizontal de la portion est relativement \og étroit \fg, il se peut que la portion paraisse un peu trop \og abrupte \fg{}.
+
+On peut dans ce cas \textit{jouer} sur les coefficients de cette portion pour \textit{arrondir} un peu tout cela !
+
+\begin{center}
+	\tikzset{coeffs/.style={Aquamarine!50!black,circle,draw=Aquamarine,thick,fill=Aquamarine!5,font=\small\ttfamily}}
+	\begin{tikzpicture}[x=3cm,y=3cm,xmin=0,xmax=2,xgrilles=0.25,ymin=0,ymax=2.25,ygrilles=0.25]
+		\tgrilles
+		\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+		\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=3]
+		\draw[line width=1.5pt,ForestGreen,dashed] (0,1.5)--(0.5,1.5) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=0.5:1.5] plot (\x,{-1/3*(\x-1)+2}) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=1.66:2] plot (\x,{-5*(\x-2)+0}) ;
+		\draw (1,0) node[below,blue,font=\large] {\verb|coeffs=3|} ;
+		%les coeffs
+		\node[coeffs,below right=5pt] at (0,1.5) {3} ;
+		\node[coeffs,below left=5pt] at (1,2) {3} ;
+		\node[coeffs,above right=5pt] at (1,2) {3} ;
+		\node[coeffs,above left=5pt] at (2,0) {3} ;
+	\end{tikzpicture}
+	~~
+	\begin{tikzpicture}[x=3cm,y=3cm,xmin=0,xmax=2,xgrilles=0.25,ymin=0,ymax=2.25,ygrilles=0.25]
+		\tgrilles
+		\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+		\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=2,couleur=red]
+		\draw[line width=1.5pt,ForestGreen,dashed] (0,1.5)--(0.5,1.5) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=0.5:1.5] plot (\x,{-1/3*(\x-1)+2}) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=1.66:2] plot (\x,{-5*(\x-2)+0}) ;
+		\draw (1,0) node[below,red,font=\large] {\verb|coeffs=2|} ;
+		%les coeffs
+		\node[coeffs,below right=5pt] at (0,1.5) {2} ;
+		\node[coeffs,below left=5pt] at (1,2) {2} ;
+		\node[coeffs,above right=5pt] at (1,2) {2} ;
+		\node[coeffs,above left=5pt] at (2,0) {2} ;
+	\end{tikzpicture}
+	
+	\smallskip
+	
+	\begin{tikzpicture}[x=3cm,y=3cm,xmin=0,xmax=2,xgrilles=0.25,ymin=0,ymax=2.25,ygrilles=0.25]
+		\tgrilles
+		\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+		\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=3§2,couleur=purple]
+		\draw[line width=1.5pt,ForestGreen,dashed] (0,1.5)--(0.5,1.5) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=0.5:1.5] plot (\x,{-1/3*(\x-1)+2}) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=1.66:2] plot (\x,{-5*(\x-2)+0}) ;
+		\draw (1,0) node[below,purple,font=\large] {\verb|coeffs=3§2|} ;
+		%les coeffs
+		\node[coeffs,below right=5pt] at (0,1.5) {3} ;
+		\node[coeffs,below left=5pt] at (1,2) {3} ;
+		\node[coeffs,above right=5pt] at (1,2) {2} ;
+		\node[coeffs,above left=5pt] at (2,0) {2} ;
+	\end{tikzpicture}
+	~~
+	\begin{tikzpicture}[x=3cm,y=3cm,xmin=0,xmax=2,xgrilles=0.25,ymin=0,ymax=2.25,ygrilles=0.25]
+		\tgrilles
+		\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+		\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=3§2/1,couleur=orange]
+		\draw[line width=1.5pt,ForestGreen,dashed] (0,1.5)--(0.5,1.5) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=0.5:1.5] plot (\x,{-1/3*(\x-1)+2}) ;
+		\draw[line width=1.5pt,ForestGreen,dashed,domain=1.66:2] plot (\x,{-5*(\x-2)+0}) ;
+		\draw (1,0) node[below,orange,font=\large] {\verb|coeffs=3§2/1|} ;
+		%les coeffs
+		\node[coeffs,below right=5pt] at (0,1.5) {3} ;
+		\node[coeffs,below left=5pt] at (1,2) {3} ;
+		\node[coeffs,above right=5pt] at (1,2) {2} ;
+		\node[coeffs,above left=5pt] at (2,0) {1} ;
+	\end{tikzpicture}
+\end{center}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+\begin{tikzpicture}
+	...
+	%le spline
+	\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=...,couleur=...]
+	%les tangentes
+	\draw[line width=1.5pt,ForestGreen,dashed] (0,1.5)--(0.5,1.5) ;
+	\draw[line width=1.5pt,ForestGreen,dashed,domain=0.5:1.5] plot (\x,{-1/3*(\x-1)+2}) ;
+	\draw[line width=1.5pt,ForestGreen,dashed,domain=1.66:2] plot (\x,{-5*(\x-2)+0}) ;
+	...
+\end{tikzpicture}
+\end{minted}
+
+\newpage
+
+\section{L'outil \og tangentetikz \fg{}}
+
+\subsection{Définitions}
+
+En parallèle de l'outil \verb|\splinetikz|, il existe l'outil \verb|\tangentetikz| qui va permettre de tracer des tangentes à l'aide de la liste de points précédemment définie pour l'outil \verb|\splinetikz|.
+
+\smallskip
+
+NB : il peut fonctionner indépendamment de l'outil \verb|\splinetikz| puisque la liste des points de travail est gérée de manière autonome !
+
+\medskip
+
+La commande \verb|\tangentetikz| se présente sous la forme :
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+\begin{tikzpicture}
+	...
+	\tangentetikz[liste=...,couleur=...,epaisseur=...,xl=...,xr=...,style=...,point=...]
+	...
+\end{tikzpicture}
+\end{minted}
+
+Cela permet de tracer la tangente :
+%
+\begin{itemize}
+	\item au point numéro numéro \texttt{<point>} de la liste \texttt{<liste>}, de coordonnées \textsf{xi/yi} avec la pente \textsf{di} ;
+	\item avec une épaisseur de \texttt{<epaisseur>}, une couleur \texttt{<couleur>} et un style additionnel \texttt{<style>} ;
+	\item en la traçant à partir de \texttt{<xl>} avant \textsf{xi} et jusqu'à \texttt{<xr>} après \textsf{xi}.
+\end{itemize}
+
+\subsection{Exemple}
+
+\begin{center}
+	\begin{tikzpicture}[x=3cm,y=3cm,xmin=0,xmax=2,xgrilles=0.25,ymin=0,ymax=2.25,ygrilles=0.25]
+		\tikzset{noeudexpl/.style={purple,font=\sffamily\small}}
+		\tgrilles
+		\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+		\draw (0,1.5) node[noeudexpl,below] {point 1} ;
+		\draw (1,2) node[noeudexpl,below] {point 2} ;
+		\draw (2,0) node[noeudexpl,above left] {point 3} ;
+		%spline
+		\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=3§2,couleur=red]
+		%tangente
+		\tangentetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,xl=0,xr=0.5,couleur=ForestGreen,style=dashed]
+		\tangentetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,xl=0.5,xr=0.75,couleur=orange,style=dotted,point=2]
+		\tangentetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,xl=0.33,xr=0,couleur=blue,style=densely dashed,point=3]
+		%explications
+		\draw[<->,very thick,darkgray] (0.5,2.2)--(1,2.2) node[midway,above,font=\sffamily] {xl} ;
+		\draw[<->,very thick,darkgray] (1,2.2)--(1.75,2.2) node[midway,above,font=\sffamily] {xr};
+	\end{tikzpicture}
+\end{center}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+\begin{tikzpicture}
+	...
+	%spline
+	\splinetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,affpoints=true,coeffs=3§2,couleur=red]
+	%tangente
+	\tangentetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,xl=0,xr=0.5,couleur=ForestGreen,style=dashed]
+	\tangentetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,xl=0.5,xr=0.75,couleur=orange,style=dotted,point=2]
+	\tangentetikz[liste=0/1.5/0§1/2/-0.333§2/0/-5,xl=0.33,xr=0,couleur=blue,style=densely dashed,point=3]
+	...
+\end{tikzpicture}
+\end{minted}
+
+\section{Exemple avec \og personnalisation \fg}
+
+\begin{center}
+\begin{tikzpicture}[x=0.5cm,y=0.5cm,xmin=0,xmax=16,xgrilles=1,ymin=0,ymax=16,ygrilles=1]
+		\draw[xstep=\xgrilles,ystep=\ygrilles,line width=0.3pt,lightgray] (\xmin,\ymin) grid (\xmax,\ymax) ;
+		\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+		\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+		\foreach \x in {0,2,...,14} {\draw[gray,line width=1.5pt] (\x,4pt) -- (\x,-4pt) ;}
+		\foreach \y in {0,2,...,14} {\draw[gray,line width=1.5pt] (4pt,\y) -- (-4pt,\y) ;}
+		%la liste pour la courbe d'interpolation
+		\def\liste{0/6/3§3/11/0§7/3/0§10/0/0§14/14/6}
+		%les tangentes "stylisées"
+		\tangentetikz[liste=\liste,xl=0,xr=1,couleur=blue,style=dashed]
+		\tangentetikz[liste=\liste,xl=2,xr=2,couleur=purple,style=dotted,point=2]
+		\tangentetikz[liste=\liste,xl=2,xr=2,couleur=orange,style=<->,point=3]
+		\tangentetikz[liste=\liste,xl=2,xr=0,couleur=ForestGreen,point=5]
+		%la courbe en elle-même
+		\splinetikz[liste=\liste,affpoints=true,coeffs=3,couleur=cyan,style=densely dotted]
+	\end{tikzpicture}
+\end{center}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=4,breaklines]{tex}
+\tikzset{%
+	xmin/.store in=\xmin,xmin/.default=-5,xmin=-5,
+	xmax/.store in=\xmax,xmax/.default=5,xmax=5,
+	ymin/.store in=\ymin,ymin/.default=-5,ymin=-5,
+	ymax/.store in=\ymax,ymax/.default=5,ymax=5,
+	xgrille/.store in=\xgrille,xgrille/.default=1,xgrille=1,
+	xgrilles/.store in=\xgrilles,xgrilles/.default=0.5,xgrilles=0.5,
+	ygrille/.store in=\ygrille,ygrille/.default=1,ygrille=1,
+	ygrilles/.store in=\ygrilles,ygrilles/.default=0.5,ygrilles=0.5,
+	xunit/.store in=\xunit,unit/.default=1,xunit=1,
+	yunit/.store in=\yunit,unit/.default=1,yunit=1
+}
+
+\begin{tikzpicture}[x=0.5cm,y=0.5cm,xmin=0,xmax=16,xgrilles=1,ymin=0,ymax=16,ygrilles=1]
+	\draw[xstep=\xgrilles,ystep=\ygrilles,line width=0.3pt,lightgray] (\xmin,\ymin) grid (\xmax,\ymax) ;
+	\draw[line width=1.5pt,->,darkgray] (\xmin,0)--(\xmax,0) ;
+	\draw[line width=1.5pt,->,darkgray] (0,\ymin)--(0,\ymax) ;
+	\foreach \x in {0,2,...,14} {\draw[gray,line width=1.5pt] (\x,4pt) -- (\x,-4pt) ;}
+	\foreach \y in {0,2,...,14} {\draw[gray,line width=1.5pt] (4pt,\y) -- (-4pt,\y) ;}
+	%la liste pour la courbe d'interpolation
+	\def\liste{0/6/3§3/11/0§7/3/0§10/0/0§14/14/6}
+	%les tangentes "stylisées"
+	\splinetgte[liste=\liste,xl=0,xr=1,couleur=blue,style=dashed]
+	\splinetgte[liste=\liste,xl=2,xr=2,couleur=purple,style=dotted,point=2]
+	\splinetgte[liste=\liste,xl=2,xr=2,couleur=orange,style=<->,point=3]
+	\splinetgte[liste=\liste,xl=2,xr=0,couleur=ForestGreen,point=5]
+	%la courbe en elle-même
+	\splinetikz[liste=\liste,affpoints=true,coeffs=3,couleur=cyan,style=densely dotted]
+\end{tikzpicture}
+\end{minted}
+
+\newpage
+
+\section{Codes du package splinetikz.sty}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{splinetikz}[2022/02/10 - v1.0 - Splines cubiques, en TikZ]
+
+%------Packages utiles
+\RequirePackage[dvipsnames,table]{xcolor}
+\RequirePackage{tikz}
+\RequirePackage{pgf,pgffor,pgfplots}
+\pgfplotsset{compat=1.18}
+\RequirePackage{ifthen}
+\RequirePackage{xkeyval}
+\RequirePackage{xfp}
+\RequirePackage{xstring}
+\RequirePackage{simplekv}
+\RequirePackage{listofitems}
+\RequirePackage{xintexpr}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{arrows.meta}
+\end{minted}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+%------commande utile pour extraire des infos d'une liste
+\newcommand\extractcoeff[2]{% #1=liste & #2=numero
+	\setsepchar{§}%
+	\readlist\lcoeffs{#1}
+	\ifnum \lcoeffslen=1
+		\def\COEFFA{#1}
+		\def\COEFFB{#1}
+	\else
+		\itemtomacro\lcoeffs[#2]\COEFF
+		\IfSubStr{\COEFF}{/}%
+			{\StrCut{\COEFF}{/}{\COEFFA}{\COEFFB}}%
+			{\def\COEFFA{\COEFF}\def\COEFFB{\COEFF}}
+	\fi
+}
+\end{minted}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2]{tex}
+%------tangente(s) en TikZ, avec point/dérivée ou liste points/dérivées
+\defKV[tgte]{%
+	liste=\def\TGTliste{#1},%
+	width=\def\TGTepaisseur{#1},%
+	couleur=\def\TGTcouleur{#1},%
+	xl=\def\TGTXL{#1},%
+	xr=\def\TGTXR{#1},%
+	style=\def\TGTstyle{#1},%
+	point=\def\TGTnumpt{#1}
+}
+
+\setKVdefault[tgte]{
+	liste=,%
+	width=1.25pt,%
+	couleur=red,%
+	xl=0.5,xr=0.5,%
+	style=,%
+	point=1
+}
+
+\newcommand\tangentetikz[1][]{%
+	\useKVdefault[tgte]%
+	\setKV[tgte]{#1}% on paramètres les nouvelles clés et on les simplifie
+	\setsepchar[.]{§./}%
+	\readlist\TGTlistepoints\TGTliste
+	\itemtomacro\TGTlistepoints[\TGTnumpt,1]\xa
+	\itemtomacro\TGTlistepoints[\TGTnumpt,2]\ya
+	\itemtomacro\TGTlistepoints[\TGTnumpt,3]\fprimea
+	\def\TGTDEB{\fpeval{\xa-\TGTXL}}\def\TGTFIN{\fpeval{\xa+\TGTXR}}%
+	\draw[line width=\TGTepaisseur,\TGTcouleur,domain=\TGTDEB:\TGTFIN,\TGTstyle] plot (\x,{\fprimea*(\x-\xa)+\ya}) ;%
+}
+\end{minted}
+
+\begin{minted}[frame=lines,framesep=2mm,bgcolor=LightGray,fontsize=\footnotesize,tabsize=2,breaklines]{tex}
+%------splines en tikz avec ..controls
+\defKV[spline]{%
+	liste=\def\SPLliste{#1},%
+	width=\def\SPLepaisseur{#1},%
+	couleur=\def\SPLcouleur{#1},%
+	coeffs=\def\SPLcoeffs{#1},%
+	couleurpoints=\def\SPLcouleurpoints{#1},%
+	taillepoints=\def\SPLtaillepoints{#1},%
+	style=\def\SPLstyle{#1}
+}
+
+\setKVdefault[spline]{%
+	liste=,%
+	width=1.25pt,%
+	couleur=red,%
+	coeffs=3,%
+	couleurpoints=black,%
+	taillepoints=2pt,%
+	affpoints=false,%
+	style=
+}
+
+\newcommand\splinetikz[1][]{%
+	\useKVdefault[spline]
+	\setKV[spline]{#1}% on paramètres les nouvelles clés et on les simplifie
+	%on lit la liste des points/nbderivés et on stocke dans \listepoints
+	\setsepchar[.]{§./}
+	\readlist\SPLlistepoints\SPLliste
+	\def\SPLnbsplines{\inteval{\SPLlistepointslen-1}}
+	%si uniquement deux points, pas de boucle...
+	\ifnum \SPLlistepointslen=2
+		%extraction des coeffs de compensation
+		\extractcoeff{\SPLcoeffs}{1}
+		%extraction des coordonnées
+		\itemtomacro\SPLlistepoints[1,1]\xa
+		\itemtomacro\SPLlistepoints[1,2]\ya
+		\itemtomacro\SPLlistepoints[1,3]\fprimea
+		\itemtomacro\SPLlistepoints[2,1]\xb
+		\itemtomacro\SPLlistepoints[2,2]\yb
+		\itemtomacro\SPLlistepoints[2,3]\fprimeb
+		\draw[line width=\SPLepaisseur,\SPLcouleur,\SPLstyle] (\xa,\ya) ..controls +({atan \fprimea}:{(\xb-\xa)/\COEFFA}) and +({-180 + atan \fprimeb}:{(\xb-\xa)/\COEFFA}).. (\xb,\yb) ;%
+	%sinon on construit bout par bout !
+	\else
+		\foreach \i in {1,2,...,\SPLnbsplines}{
+			%extraction des coeffs de compensation
+			\extractcoeff{\SPLcoeffs}{\i}
+			\def\j{\inteval{\i+1}}
+			\itemtomacro\SPLlistepoints[\i,1]\xa
+			\itemtomacro\SPLlistepoints[\i,2]\ya
+			\itemtomacro\SPLlistepoints[\i,3]\fprimea
+			\itemtomacro\SPLlistepoints[\j,1]\xb
+			\itemtomacro\SPLlistepoints[\j,2]\yb
+			\itemtomacro\SPLlistepoints[\j,3]\fprimeb
+			\draw[line width=\SPLepaisseur,\SPLcouleur,\SPLstyle] (\xa,\ya) ..controls +({atan \fprimea}:{(\xb-\xa)/\COEFFA}) and +({-180 + atan \fprimeb}:{(\xb-\xa)/\COEFFB}).. (\xb,\yb) ;%
+		}
+	\fi
+	\ifboolKV[spline]{affpoints}%on affiche les points de contrôle
+	{%
+		\foreach \i in {1,2,...,\SPLlistepointslen}{%
+			\itemtomacro\SPLlistepoints[\i,1]\xa
+			\itemtomacro\SPLlistepoints[\i,2]\ya
+			\filldraw[\SPLcouleurpoints] (\xa,\ya) circle[radius=\SPLtaillepoints] ;%
+		}
+	}
+	{}
+}
+\end{minted}
+
+\end{document}
