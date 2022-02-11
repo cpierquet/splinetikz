@@ -6,4 +6,4 @@ La commande <code>\splinetikz[...]</code>, trace un ensemble de <i>splines</i> g
 
 Également de quoi tracer, grâce à la commande <code>\tangentetikz[...]</code>, (une ou) des tangentes à l'aide de triplets <code>xa/ya/da§...</code> pour tracer une (portion de) tangente via <code>da*(x-xa)+ya</code>.
 
-![illustr](splinetikz.png?raw=true "Title")
+![illustr](splinetikz-img.png?raw=true "Title")
